@@ -14,8 +14,8 @@ import java.net.Socket;
 import java.util.Collection;
 
 public class Client {
-//    private static final String HOST = "34.44.208.210";
-    private static final String HOST = "localhost";
+    private static final String HOST = "35.208.184.138";
+//    private static final String HOST = "localhost";
     private static final int PORT = 8080;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
@@ -42,8 +42,8 @@ public class Client {
                 logger.info("Sent command: {}", json);
             }
 
-            Cave cave;
-            Player player;
+            Cave cave = null;
+            Player player = null;
             Collection<Response.StateLocations.ItemLocation> itemLocations;
             Collection<Response.StateLocations.PlayerLocation> playerLocations;
 
@@ -54,6 +54,7 @@ public class Client {
                 }
 
                 final var response = objectMapper.readValue(line, Response.class);
+                Player finalPlayer = player;
                 switch (response) {
                     case Response.Authorized authorized -> {
                         player = authorized.humanPlayer();
@@ -70,10 +71,14 @@ public class Client {
                     case Response.StateLocations stateLocations -> {
                         itemLocations = stateLocations.itemLocations();
                         playerLocations = stateLocations.playerLocations();
-                        logger.info("itemLocations: {}", itemLocations);
-                        logger.info("playerLocations: {}", playerLocations);
+                        logger.info("gold: {}", stateLocations.gold());
+//                        logger.info("playerLocations: {}", playerLocations);
 
-                        final var cmd = new Request.Command(Direction.Up);
+                        final var dijkstra = new Dijkstra(cave, itemLocations);
+                        final var start = playerLocations.stream().filter(pl -> pl.entity().equals(finalPlayer)).findAny().get().location();
+                        logger.info("position: {}", start);
+                        final var direction = dijkstra.find(start);
+                        final var cmd = new Request.Command(direction);
                         final var cmdJson = objectMapper.writeValueAsString(cmd);
                         writer.write(cmdJson);
                         writer.newLine();
